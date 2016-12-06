@@ -28,8 +28,12 @@ function loadAlternateImage(img, url) {
 </head>
 <body onload="welcomeMessage()">
 
-<img id="hawk" src="hawk_20x20.png" alt="Hawk" onerror="loadAlternateImage(this, 'https://s17.postimg.org/j1lm3uvlr/hawk_20x20.png')"></img>
-<img id="mouse" src="mouse_20x20.png" alt="Mouse" onerror="loadAlternateImage(this, 'https://s11.postimg.org/klw9wtaqb/mouse_20x20.png')"></img>
+<img id="hawk" src="hawk_20x20.png" alt="Hawk" 
+    onerror="loadAlternateImage(this,'https://s17.postimg.org/j1lm3uvlr/hawk_20x20.png')">
+</img>
+<img id="mouse" src="mouse_20x20.png" alt="Mouse" 
+    onerror="loadAlternateImage(this,'https://s11.postimg.org/klw9wtaqb/mouse_20x20.png')">
+</img>
 
 <div align="center">
 <header><h1>Snake</h1></header>
@@ -37,7 +41,12 @@ function loadAlternateImage(img, url) {
 HTML5 canvas tag not supported by this browser.
 </canvas>
 </div>
-<div id="scoreRow" align="center">Score: <span id="currentScore">0</span>High Score: <span id="highScore">0</span></div>
+<div id="scoreRow" align="center">
+Score: 
+<span id="currentScore">0</span>
+High Score: 
+<span id="highScore">0</span>
+</div>
 
 <script>
 var canvas, ctx;
@@ -168,7 +177,8 @@ function startGame() {
         }
         else {
             //Find a random empty coordinate to place food
-            var randCoordIndex = Math.floor(Math.random() * (maxNumberOfCoords - numOccupiedCoords));
+            var randCoordIndex = Math.floor(Math.random() * 
+                                (maxNumberOfCoords - numOccupiedCoords));
             //Loop to figure out which coord this is
             var coordIndexCounter = 0;
             for (x = 1; x < 29; x++) {
@@ -287,7 +297,12 @@ function startGame() {
                 ctx.font = "30px Verdana";
                 ctx.strokeStyle = "white";
                 ctx.strokeText(textToDisplay, canvasCenter.x, canvasCenter.y);
-                var gradient = ctx.createRadialGradient(canvasCenter.x, canvasCenter.y, 0, canvasCenter.x, canvasCenter.y, 200);
+                var gradient = ctx.createRadialGradient(canvasCenter.x, 
+                                                        canvasCenter.y, 
+                                                        0, 
+                                                        canvasCenter.x, 
+                                                        canvasCenter.y, 
+                                                        200);
                 gradient.addColorStop("0.0", "green");
                 gradient.addColorStop("1.0", "black");
                 ctx.fillStyle = gradient;
@@ -375,7 +390,12 @@ function startGame() {
             ctx.font = "20px Verdana";
             ctx.strokeStyle = "white";
             ctx.strokeText(textToDisplay, canvasCenter.x, canvasCenter.y);
-            var gradient = ctx.createRadialGradient(canvasCenter.x, canvasCenter.y, 0, canvasCenter.x, canvasCenter.y, 200);
+            var gradient = ctx.createRadialGradient(canvasCenter.x, 
+                                                    canvasCenter.y, 
+                                                    0, 
+                                                    canvasCenter.x, 
+                                                    canvasCenter.y, 
+                                                    200);
             gradient.addColorStop("0.0", "red");
             gradient.addColorStop("1.0", "black");
             ctx.fillStyle = gradient;
@@ -388,6 +408,7 @@ function startGame() {
             ctx.strokeText(textToDisplay, canvasCenter.x, textDisplayCoordY);
             ctx.fillStyle = "blue";
             ctx.fillText(textToDisplay, canvasCenter.x, textDisplayCoordY);
+            
             cleanUp();
         }
         else {
