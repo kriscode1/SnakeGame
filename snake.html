@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<style>
+img#hawk, img#mouse {display: none;}
+
+canvas#gameCanvas {
+    border: 1px solid #d3d3d3;
+    background-color: #f1f1f1;
+}
+
+div#scoreRow {}
+
+span#currentScore {
+    padding-right: 50px;
+}
+
+span#highScore {}
+
+</style>
+<script>
+function loadAlternateImage(img, url) {
+    //Used to load hosted image if local image is not found
+    img.onerror = "";
+    img.src = url;
+}
+</script>
+</head>
+<body onload="welcomeMessage()">
+
+<img id="hawk" src="hawk_20x20.png" alt="Hawk" onerror="loadAlternateImage(this, 'https://s17.postimg.org/j1lm3uvlr/hawk_20x20.png')"></img>
+<img id="mouse" src="mouse_20x20.png" alt="Mouse" onerror="loadAlternateImage(this, 'https://s11.postimg.org/klw9wtaqb/mouse_20x20.png')"></img>
+
+<div align="center">
+<header><h1>Snake</h1></header>
+<canvas id="gameCanvas" width="600", height="400" onclick="startGame()">
+HTML5 canvas tag not supported by this browser.
+</canvas>
+</div>
+<div id="scoreRow" align="center">Score: <span id="currentScore">0</span>High Score: <span id="highScore">0</span></div>
+
+<script>
+var canvas, ctx;
+var gameRunning = false;
+var highScore = 0;
+var canvasCenter;
+
+function welcomeMessage() {
+    //Sets some common variables and tells the user to play the game
+    canvas = document.getElementById("gameCanvas");
+    ctx = canvas.getContext("2d");
+    canvasCenter = coords(canvas.width/2, canvas.height/2);
+    
+    //Tell the user to click or press enter
+    textToDisplay = "Click or press enter to play snake.";
+    ctx.textAlign = "center";
+    ctx.font = "30px Verdana";
+    ctx.fillStyle = "#302921";//dark grayish brown
+    ctx.fillText(textToDisplay, canvasCenter.x, canvasCenter.y);
+    
+    //Listen for "enter" to start/reset the game
+    var keyupListener = function(event) {
+        if (event.keyCode == 13) {
+            //Enter key was released
+            if (!gameRunning) {
+                startGame();
+            }
+        }
+    }
+    window.addEventListener("keyup", keyupListener);
+}
+
+function clearMovementArea() {
+    ctx.clearRect(20, 20, canvas.width-40, canvas.height-40);
+}
+
+//Simple object for managing 2D coordinates
+function coords(xcoord, ycoord) {
+    return {x: xcoord, y: ycoord};
+}
+
+function coordsCopy(coordsToCopy) {
+    return coords(coordsToCopy.x, coordsToCopy.y);
+}
+
+function indexOfCoord(coordsArray, coordToFind) {
+    //Searches coordsArray for coordToFind and returns the index or -1
+    var numCoordsToCheck = coordsArray.length;
+    for (var n = 0; n < numCoordsToCheck; n++) {
+        if ((coordsArray[n].x === coordToFind.x) && 
+            (coordsArray[n].y === coordToFind.y)) {
+            return n;
+        }
+    }
+    return -1;
+}
+
+function checkIfCollision(collideCoordinatesArray, coordinateToCheck) {
+    //Converts indexOfCoord to a bool
+    if (indexOfCoord(collideCoordinatesArray, coordinateToCheck) === -1) {
+        return false;
+    }
+    else {
+        return true;
+    }
+}
+
+function startGame() {
+    "use strict";
+    
+    if (gameRunning) return;
+    else gameRunning = true;
+    console.log("Game start.");
+    
+    //canvas = document.getElementById("gameCanvas");
+    //ctx = canvas.getContext("2d");
+    /*  Canvas is 600x400px, with 20x20px hawk on all sides. 
+    Divide into coordinates of 20x20px. 
+    So the board is 30x20 units.
+    */
+    
+    var hawkImg = document.getElementById("hawk");
+    var mouseImg = document.getElementById("mouse");
+    
+    //Create hawk border
+    ctx.rect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = ctx.createPattern(hawkImg, "repeat");
+    ctx.fill();
+    clearMovementArea();
+    
+    //Initialize snake
+    var snake = {
+        headCoord: coords(8, 8),
+        bodyCoords: [coords(7, 8), coords(6, 8), coords(5, 8)],
+        //Index 0 is near the head, the end of the array is the tail
+        addHeadToBody: function() {
+            this.bodyCoords.unshift(this.headCoord);
+        },
+        shiftBodyCoords: function() {
+            this.bodyCoords.pop();
+        }
+    }
+    
+    var hawks = [];
+    //Add left and right sides of board
+    for (var y = 0; y < 20; y++) {
+        hawks.push(coords(0, y));
+        hawks.push(coords(29, y));
+    }
+    //Add top and bottom sides of board
+    for (var x = 0; x < 30; x++) {
+        hawks.push(coords(x, 0));
+        hawks.push(coords(x, 19));
+    }
+    
+    var foods = [];
+    function addFood() {
+        //Returns true if a coordinate is added to foods
+        //Otherwise returns false, implying victory
+        var occupiedCoords = snake.bodyCoords.concat(foods);
+        occupiedCoords.push(snake.headCoord);
+        //Already know the border coords are occupied
+        var numOccupiedCoords = occupiedCoords.length;
+        var maxNumberOfCoords = 504;//30x20 board --> 28x18 non-hawk coords
+        if (numOccupiedCoords == maxNumberOfCoords) {
+            //Implied victory
+            return false;
+        }
+        else {
+            //Find a random empty coordinate to place food
+            var randCoordIndex = Math.floor(Math.random() * (maxNumberOfCoords - numOccupiedCoords));
+            //Loop to figure out which coord this is
+            var coordIndexCounter = 0;
+            for (x = 1; x < 29; x++) {
+                for (y = 1; y < 19; y++) {
+                    if (checkIfCollision(occupiedCoords, coords(x, y))) {
+                        //This coord can't be new food
+                    }
+                    else if (coordIndexCounter == randCoordIndex) {
+                        foods.push(coords(x, y));
+                        return true;
+                    } else {
+                        //Could be food, but not the randCoordIndex-th coordinate
+                        coordIndexCounter++;
+                    }
+                }
+            }
+        }
+        return false;//This should never happen
+    }
+    addFood();
+    
+    //Initialize controller
+    var lastDirection = "right";
+    var lastDirectionKey = "right";
+    var keydownListener = function(event) {
+        switch (event.keyCode) {
+            case 37:
+                //Left arrow
+                if (lastDirection != "right") lastDirectionKey = "left";
+                break;
+            case 39:
+                //Right arrow
+                if (lastDirection != "left") lastDirectionKey = "right";
+                break;
+            case 38:
+                //Up arrow
+                if (lastDirection != "down") lastDirectionKey = "up";
+                break;
+            case 40:
+                //Down arrow
+                if (lastDirection != "up") lastDirectionKey = "down";
+                break;
+            default:
+                break;
+        }
+    }
+    window.addEventListener("keydown", keydownListener);
+    
+    function cleanUp() {
+        window.removeEventListener("keydown", keydownListener);
+        gameRunning = false;
+    }
+    
+    var currentScore;
+    var currentScoreTag = document.getElementById("currentScore");
+    var highScoreTag = document.getElementById("highScore");
+    
+    function updateGame() {
+        //Main game loop with all of the logic and drawing
+        
+        //Updating score here instead of after more drawing
+        //This saves a variable or two so I can draw the dead 
+        //snake however I'd like, and use snake.bodyCoords.length
+        //for score keeping.
+        currentScore = snake.bodyCoords.length - 3;
+        if (currentScore > highScore) {
+            highScore = currentScore;
+            highScoreTag.innerHTML = highScore;
+        }
+        currentScoreTag.innerHTML = currentScore;
+        
+        var gameOver = false;
+        var newHeadCoord = coordsCopy(snake.headCoord);
+        //Adjust head coordinates based on last keypress
+        switch (lastDirectionKey) {
+            case "right":
+                newHeadCoord.x++;
+                break;
+            case "left":
+                newHeadCoord.x--;
+                break;
+            case "up":
+                newHeadCoord.y--;
+                break;
+            case "down":
+                newHeadCoord.y++;
+                break;
+            default:
+                alert("No key pressed to move snake. This shouldn't happen.");
+                break;
+        }
+        lastDirection = lastDirectionKey;
+        
+        //Check if head coordinates collides with anything
+        if (checkIfCollision(foods, newHeadCoord)) {
+            //Collide with food, extend snake body
+            snake.addHeadToBody();
+            snake.headCoord = newHeadCoord;
+            //Don't shift body because it is growing
+            var foodIndex = indexOfCoord(foods, newHeadCoord);
+            if (foodIndex == -1) {
+                alert("Serious error, foodsIndex = -1.");
+            }
+            foods.splice(foodIndex, 1);
+            //Add an extra food as the snake gets larger
+            var foodAdded = addFood();
+            if (foodAdded) {
+                var snakeSize = snake.bodyCoords.length;
+                var bonusFood = [10, 20, 30, 45, 60, 80, 110, 200, 300, 400];
+                if (bonusFood.indexOf(snakeSize) != -1) foodAdded = addFood();
+            }
+            if (!foodAdded) {
+                //Can't add more food because the player won.
+                var textToDisplay = "You actually won???";
+                ctx.textAlign = "center";
+                ctx.font = "30px Verdana";
+                ctx.strokeStyle = "white";
+                ctx.strokeText(textToDisplay, canvasCenter.x, canvasCenter.y);
+                var gradient = ctx.createRadialGradient(canvasCenter.x, canvasCenter.y, 0, canvasCenter.x, canvasCenter.y, 200);
+                gradient.addColorStop("0.0", "green");
+                gradient.addColorStop("1.0", "black");
+                ctx.fillStyle = gradient;
+                ctx.fillText(textToDisplay, canvasCenter.x, canvasCenter.y);
+                
+                //Fix score
+                currentScore = snake.bodyCoords.length - 3 + 1;
+                if (currentScore > highScore) {
+                    highScore = currentScore;
+                    highScoreTag.innerHTML = highScore;
+                }
+                currentScoreTag.innerHTML = currentScore;
+                
+                //Finish and exit function
+                cleanUp();
+                gameOver = true;
+                return;
+            }
+        }
+        else if (checkIfCollision(hawks, newHeadCoord)) {
+            //Collide with hawks, game over
+            console.log("Game over, hit hawks.");
+            snake.addHeadToBody();//Updating for final animation
+            snake.headCoord = newHeadCoord;
+            snake.shiftBodyCoords();
+            gameOver = true;
+        }
+        else if (checkIfCollision(snake.bodyCoords, newHeadCoord)) {
+            //Collide with self, game over
+            console.log("Game over, ate self.")
+            snake.addHeadToBody();
+            snake.headCoord = newHeadCoord;
+            //snake.shiftBodyCoords();
+            //Won't shift to emphasize how the player lost
+            gameOver = true;
+        }
+        else {
+            //No collisions, update body coordinates
+            snake.addHeadToBody();
+            snake.headCoord = newHeadCoord;
+            snake.shiftBodyCoords();
+        }
+        
+        //Clear area for drawing
+        clearMovementArea(canvas, ctx);
+        
+        //Draw snake
+        var snakeBodyLength = snake.bodyCoords.length;
+        for (var bodyPart = 0; bodyPart < snakeBodyLength; bodyPart++) {
+            ctx.beginPath();
+            var bodyPartC = snake.bodyCoords[bodyPart];
+            ctx.arc((20 * bodyPartC.x) + 10,
+                    (20 * bodyPartC.y) + 10,
+                    9,
+                    0,
+                    2 * Math.PI);
+            ctx.fillStyle = "black";
+            ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.arc((20 * snake.headCoord.x) + 10,
+                (20 * snake.headCoord.y) + 10,
+                9,
+                0,
+                2 * Math.PI);
+        ctx.fillStyle = "red";
+        ctx.fill();
+        
+        //Draw food
+        //ctx.fillStyle = "pink";
+        var foodCount = foods.length;
+        for (var foodPiece = 0; foodPiece < foodCount; foodPiece++) {
+            /*ctx.fillRect((20 * foods[foodPiece].x) + 3,
+                         (20 * foods[foodPiece].y) + 3,
+                         14, 14);//20-3-3=14*/
+            ctx.drawImage(mouseImg, 
+                          20 * foods[foodPiece].x, 
+                          20 * foods[foodPiece].y);
+        }
+        
+        if (gameOver) {
+            //Display Game Over message and clean up
+            var textToDisplay = "GAME OVER";
+            ctx.textAlign = "center";
+            ctx.font = "20px Verdana";
+            ctx.strokeStyle = "white";
+            ctx.strokeText(textToDisplay, canvasCenter.x, canvasCenter.y);
+            var gradient = ctx.createRadialGradient(canvasCenter.x, canvasCenter.y, 0, canvasCenter.x, canvasCenter.y, 200);
+            gradient.addColorStop("0.0", "red");
+            gradient.addColorStop("1.0", "black");
+            ctx.fillStyle = gradient;
+            ctx.fillText(textToDisplay, canvasCenter.x, canvasCenter.y);
+            
+            textToDisplay = "Click or press enter to play again.";
+            ctx.font = "15px Verdana";
+            ctx.strokeStyle = "white";
+            var textDisplayCoordY = canvas.height * 0.75;
+            ctx.strokeText(textToDisplay, canvasCenter.x, textDisplayCoordY);
+            ctx.fillStyle = "blue";
+            ctx.fillText(textToDisplay, canvasCenter.x, textDisplayCoordY);
+            cleanUp();
+        }
+        else {
+            //Insert delay for next update
+            var delay = 200;
+            if (snakeBodyLength <= 100) delay -= snakeBodyLength;
+            else {
+                delay = 70 + Math.floor((500 - snakeBodyLength)/400*30)
+            }
+            setTimeout(updateGame, delay);
+        }
+    }
+    
+    //Insert delay for first update
+    setTimeout(updateGame, 200);
+}
+</script>
+
+</body>
+</html>
