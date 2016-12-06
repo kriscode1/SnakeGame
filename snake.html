@@ -47,6 +47,11 @@ Score:
 High Score: 
 <span id="highScore">0</span>
 </div>
+<div align="center">
+<br>
+<br>
+Use arrow keys to move the snake, or tap if on mobile. Eat mice to grow. Don't run into the hawks or eat your own tail.
+</div>
 
 <script>
 var canvas, ctx;
@@ -200,7 +205,7 @@ function startGame() {
     }
     addFood();
     
-    //Initialize controller
+    //Initialize controllers
     var lastDirection = "right";
     var lastDirectionKey = "right";
     var keydownListener = function(event) {
@@ -227,8 +232,50 @@ function startGame() {
     }
     window.addEventListener("keydown", keydownListener);
     
+    function clickListener(event) {
+        var clickX = event.offsetX;
+        var clickY = event.offsetY;
+        console.log("click " + event.offsetX + " " + event.offsetY);
+        var snakeX = (snake.headCoord.x * 20) + 10;
+        var snakeY = (snake.headCoord.y * 20) + 10;
+        if (clickX >= snakeX) {
+            if (clickY >= snakeY) {
+                //Clicked bottom right
+                if ((lastDirection == "right") || (lastDirection == "left")) { 
+                    lastDirectionKey = "down";
+                }
+                else lastDirectionKey = "right";
+            }
+            else {
+                //Clicked top right
+                if ((lastDirection == "right") || (lastDirection == "left")) { 
+                    lastDirectionKey = "up";
+                }
+                else lastDirectionKey = "right";
+            }
+        }
+        else {
+            if (clickY >= snakeY) {
+                //Clicked bottom left
+                if ((lastDirection == "right") || (lastDirection == "left")) { 
+                    lastDirectionKey = "down";
+                }
+                else lastDirectionKey = "left";
+            }
+            else {
+                //Clicked top left
+                if ((lastDirection == "right") || (lastDirection == "left")) { 
+                    lastDirectionKey = "up";
+                }
+                else lastDirectionKey = "left";
+            }
+        }
+    }
+    window.addEventListener("click", clickListener);
+    
     function cleanUp() {
         window.removeEventListener("keydown", keydownListener);
+        window.removeEventListener("click", clickListener);
         gameRunning = false;
     }
     
