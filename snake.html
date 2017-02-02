@@ -2,7 +2,7 @@
 <html lang="en-US">
 <head>
 <style>
-img#hawk, img#mouse {display: none;}
+img#hawk, img#mouse, img#babymouse {display: none;}
 
 canvas#gameCanvas {
     border: 1px solid #d3d3d3;
@@ -34,6 +34,9 @@ function loadAlternateImage(img, url) {
 <img id="mouse" src="mouse_20x20.png" alt="Mouse" 
     onerror="loadAlternateImage(this,'https://s11.postimg.org/klw9wtaqb/mouse_20x20.png')">
 </img>
+<img id="babymouse" src="babymouse_20x20.png" alt="Baby Mouse" 
+    onerror="loadAlternateImage(this,'https://s11.postimg.org/klw9wtaqb/babymouse_20x20.png')">
+</img>
 
 <div align="center">
 <header><h1>Snake</h1></header>
@@ -52,6 +55,9 @@ High Score:
 <br>
 Use arrow keys or mouse clicks to move the snake. Eat mice to grow. Don't run into the hawks or eat your own tail.
 </div>
+<br>
+<br>
+<footer><div align="center"><small>Kristofer Christakos</small></div></footer>
 
 <script>
 var canvas, ctx;
@@ -119,6 +125,34 @@ function checkIfCollision(collideCoordinatesArray, coordinateToCheck) {
     }
 }
 
+function listSuroundingCoords(centerCoords) {
+    //Returns an array of the 8 surrounding coords, if they are not hawks
+    var ret = [];
+    var x = centerCoords.x;
+    var y = centerCoords.y;
+    if ((x > 1) && (y > 1))     ret.push(coords(x-1, y-1));
+    if (x > 1)                  ret.push(coords(x-1, y));
+    if ((x > 1) && (y <= 17))   ret.push(coords(x-1, y+1));
+    if (y > 1)                  ret.push(coords(x, y-1));
+    if (y <= 17)                ret.push(coords(x, y+1));
+    if ((x <= 27) && (y > 1))   ret.push(coords(x+1, y-1));
+    if (x <= 27)                ret.push(coords(x+1, y));
+    if ((x <= 27) && (y <= 17)) ret.push(coords(x+1, y+1));
+    return ret;
+}
+
+function trimSurroundingCoords(surroundingCoords, occupiedCoords) {
+    var ret = [];
+    for (var n = 0; n < surroundingCoords.length; ++n) {
+        if (!checkIfCollision(occupiedCoords, surroundingCoords[n])) ret.push(surroundingCoords[n]);
+    }
+    return ret;
+}
+
+function getUnoccupiedSurroundingCoords(occupiedCoords, centerCoords) {
+    return trimSurroundingCoords(listSuroundingCoords(centerCoords), occupiedCoords);
+}
+
 function startGame() {
     "use strict";
     
@@ -135,6 +169,7 @@ function startGame() {
     
     var hawkImg = document.getElementById("hawk");
     var mouseImg = document.getElementById("mouse");
+    var babyMouseImg = document.getElementById("babymouse");
     
     //Create hawk border
     ctx.rect(0, 0, canvas.width, canvas.height);
@@ -168,10 +203,12 @@ function startGame() {
     }
     
     var foods = [];
+    var superFoods = [];
     function addFood() {
         //Returns true if a coordinate is added to foods
         //Otherwise returns false, implying victory
         var occupiedCoords = snake.bodyCoords.concat(foods);
+        occupiedCoords.concat(superFoods);
         occupiedCoords.push(snake.headCoord);
         //Already know the border coords are occupied
         var numOccupiedCoords = occupiedCoords.length;
@@ -192,7 +229,26 @@ function startGame() {
                         //This coord can't be new food
                     }
                     else if (coordIndexCounter == randCoordIndex) {
+                        //Determine if this mouse is next to another mouse
+                        //If so, they create a nearby superfood
+                        if (checkIfCollision(foods, coords(x-1,y-1)) ||
+                            checkIfCollision(foods, coords(x-1,y)) ||
+                            checkIfCollision(foods, coords(x-1,y+1)) ||
+                            checkIfCollision(foods, coords(x,y-1)) ||
+                            checkIfCollision(foods, coords(x,y+1)) ||
+                            checkIfCollision(foods, coords(x+1,y-1)) ||
+                            checkIfCollision(foods, coords(x+1,y)) ||
+                            checkIfCollision(foods, coords(x+1,y+1))) {
+                            //Create superfood if there is a nearby space available
+                            var potentialSuperFoodCoords = getUnoccupiedSurroundingCoords(occupiedCoords, coords(x, y));
+                            if (potentialSuperFoodCoords.length > 0) {
+                                var superFoodsCoordsIndex = Math.floor(Math.random() * potentialSuperFoodCoords.length);
+                                superFoods.push(potentialSuperFoodCoords[superFoodsCoordsIndex]);
+                            }
+                        }
+                        //Finally add the new normal mouse
                         foods.push(coords(x, y));
+                        
                         return true;
                     } else {
                         //Could be food, but not the randCoordIndex-th coordinate
@@ -320,53 +376,65 @@ function startGame() {
         lastDirection = lastDirectionKey;
         
         //Check if head coordinates collides with anything
-        if (checkIfCollision(foods, newHeadCoord)) {
+        var collidedWithFood = false;
+        var collidedWithSuperFood = false;
+        if (checkIfCollision(foods, newHeadCoord)) collidedWithFood = true;
+        else if (checkIfCollision(superFoods, newHeadCoord)) collidedWithSuperFood = true;
+        if (collidedWithFood || collidedWithSuperFood) {
             //Collide with food, extend snake body
             snake.addHeadToBody();
             snake.headCoord = newHeadCoord;
             //Don't shift body because it is growing
-            var foodIndex = indexOfCoord(foods, newHeadCoord);
-            if (foodIndex == -1) {
-                alert("Serious error, foodsIndex = -1.");
-            }
-            foods.splice(foodIndex, 1);
-            //Add an extra food as the snake gets larger
-            var foodAdded = addFood();
-            if (foodAdded) {
-                var snakeSize = snake.bodyCoords.length;
-                var bonusFood = [10, 20, 30, 45, 60, 80, 110, 200, 300, 400];
-                if (bonusFood.indexOf(snakeSize) != -1) foodAdded = addFood();
-            }
-            if (!foodAdded) {
-                //Can't add more food because the player won.
-                var textToDisplay = "You actually won???";
-                ctx.textAlign = "center";
-                ctx.font = "30px Verdana";
-                ctx.strokeStyle = "white";
-                ctx.strokeText(textToDisplay, canvasCenter.x, canvasCenter.y);
-                var gradient = ctx.createRadialGradient(canvasCenter.x, 
-                                                        canvasCenter.y, 
-                                                        0, 
-                                                        canvasCenter.x, 
-                                                        canvasCenter.y, 
-                                                        200);
-                gradient.addColorStop("0.0", "green");
-                gradient.addColorStop("1.0", "black");
-                ctx.fillStyle = gradient;
-                ctx.fillText(textToDisplay, canvasCenter.x, canvasCenter.y);
-                
-                //Fix score
-                currentScore = snake.bodyCoords.length - 3 + 1;
-                if (currentScore > highScore) {
-                    highScore = currentScore;
-                    highScoreTag.innerHTML = highScore;
+            if (collidedWithFood) {
+                var foodIndex = indexOfCoord(foods, newHeadCoord);
+                if (foodIndex == -1) {
+                    alert("Serious error, collidedWithFood, foodsIndex = -1.");
                 }
-                currentScoreTag.innerHTML = currentScore;
-                
-                //Finish and exit function
-                cleanUp();
-                gameOver = true;
-                return;
+                foods.splice(foodIndex, 1);
+                //Add an extra food as the snake gets larger
+                var foodAdded = addFood();
+                if (foodAdded) {
+                    var snakeSize = snake.bodyCoords.length;
+                    var bonusFood = [10, 20, 30, 45, 60, 80, 110, 200, 300, 400];
+                    if (bonusFood.indexOf(snakeSize) != -1) foodAdded = addFood();
+                }
+                if (!foodAdded) {
+                    //Can't add more food because the player won.
+                    var textToDisplay = "You actually won???";
+                    ctx.textAlign = "center";
+                    ctx.font = "30px Verdana";
+                    ctx.strokeStyle = "white";
+                    ctx.strokeText(textToDisplay, canvasCenter.x, canvasCenter.y);
+                    var gradient = ctx.createRadialGradient(canvasCenter.x, 
+                                                            canvasCenter.y, 
+                                                            0, 
+                                                            canvasCenter.x, 
+                                                            canvasCenter.y, 
+                                                            200);
+                    gradient.addColorStop("0.0", "green");
+                    gradient.addColorStop("1.0", "black");
+                    ctx.fillStyle = gradient;
+                    ctx.fillText(textToDisplay, canvasCenter.x, canvasCenter.y);
+                    
+                    //Fix score
+                    currentScore = snake.bodyCoords.length - 3 + 1;
+                    if (currentScore > highScore) {
+                        highScore = currentScore;
+                        highScoreTag.innerHTML = highScore;
+                    }
+                    currentScoreTag.innerHTML = currentScore;
+                    
+                    //Finish and exit function
+                    cleanUp();
+                    gameOver = true;
+                    return;
+                }
+            } else {
+                var foodIndex = indexOfCoord(superFoods, newHeadCoord);
+                if (foodIndex == -1) {
+                    alert("Serious error, collidedWithFood==false, foodsIndex = -1.");
+                }
+                superFoods.splice(foodIndex, 1);
             }
         }
         else if (checkIfCollision(hawks, newHeadCoord)) {
@@ -430,6 +498,39 @@ function startGame() {
                           20 * foods[foodPiece].y);
         }
         
+        //Attempt to move super foods
+        var occupiedCoords = snake.bodyCoords.concat(foods);
+        occupiedCoords.concat(superFoods);
+        occupiedCoords.push(snake.headCoord);
+        //clone array
+        var newSuperFoods = [];
+        for (var n = 0; n < superFoods.length; ++n) {
+            newSuperFoods.push(coordsCopy(superFoods[n]));
+        }
+        for (var n = 0; n < superFoods.length; n++) {
+            var potentialMovement = getUnoccupiedSurroundingCoords(occupiedCoords, superFoods[n]);
+            
+            if (potentialMovement.length > 0) {
+                var newLocationIndex = Math.floor(Math.random() * potentialMovement.length);
+                newSuperFoods.push(potentialMovement[newLocationIndex]);
+                newSuperFoods.splice(superFoods[n], 1);
+                occupiedCoords.push((potentialMovement[newLocationIndex]));
+                occupiedCoords.splice(superFoods[n], 1);
+            }
+        }
+        superFoods = newSuperFoods;
+        
+        //Draw superFoods
+        var superFoodsCount = superFoods.length;
+        for (var foodPiece = 0; foodPiece < superFoodsCount; foodPiece++) {
+            /*ctx.fillRect((20 * superFoods[foodPiece].x) + 3,
+                         (20 * superFoods[foodPiece].y) + 3,
+                         14, 14);//20-3-3=14*/
+            ctx.drawImage(babyMouseImg, 
+                          20 * superFoods[foodPiece].x, 
+                          20 * superFoods[foodPiece].y);
+        }
+        
         if (gameOver) {
             //Display Game Over message and clean up
             var textToDisplay = "GAME OVER";
@@ -460,11 +561,27 @@ function startGame() {
         }
         else {
             //Insert delay for next update
-            var delay = 200;
-            if (snakeBodyLength <= 100) delay -= snakeBodyLength;
-            else {
-                delay = 70 + Math.floor((500 - snakeBodyLength)/400*30)
+            var delay;
+            var startDelay = 200;
+            var finalDelay = 85;
+            var snakeLen1 = 80;//Linear 1:1 until here
+            var snakeLen2 = 200;//More gradual slope until here, then cap the delay
+            if (snakeBodyLength <= snakeLen1) {
+                //Linear 1:1 decrease in delay
+                delay = startDelay - snakeBodyLength;
             }
+            else if (snakeBodyLength <= snakeLen2) {
+                //Linear decrease in delay, more slowly
+                var m = (finalDelay - (startDelay-snakeLen1))/(snakeLen2 - snakeLen1);
+                //Calculate intercept using (length, delay) = (snakeLen1, (startDelay-snakeLen1))
+                var b = (startDelay-snakeLen1) - (m * snakeLen1);
+                delay = Math.floor(m*snakeBodyLength + b);
+            }
+            else {
+                //Cap delay at fixed value
+                delay = finalDelay;
+            }
+            //console.log("delay = " + delay);
             setTimeout(updateGame, delay);
         }
     }
